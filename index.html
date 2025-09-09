@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TENG 圖片處理工具 v3.0</title>
+    <title>TENG 圖片處理工具 v3.1 - 裁切功能強化版</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://unpkg.com/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet">
     <script src="heic-to.js"></script>
     <style>
         :root {
@@ -177,12 +179,12 @@
             width: 16px;
             height: 16px;
         }
-        .mode-buttons, .dimension-buttons, .size-buttons, .quality-buttons, .format-buttons {
+        .mode-buttons, .dimension-buttons, .size-buttons, .quality-buttons, .format-buttons, .ratio-buttons, .crop-size-buttons {
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
         }
-        .mode-button, .dimension-button, .size-button, .quality-button, .format-button {
+        .mode-button, .dimension-button, .size-button, .quality-button, .format-button, .ratio-button, .crop-size-button {
             font-size: 14px;
             padding: 8px 16px;
             cursor: pointer;
@@ -192,12 +194,12 @@
             color: var(--secondary-color);
             transition: all 0.2s;
         }
-        .mode-button.active, .dimension-button.active, .size-button.active, .quality-button.active, .format-button.active {
+        .mode-button.active, .dimension-button.active, .size-button.active, .quality-button.active, .format-button.active, .ratio-button.active, .crop-size-button.active {
             background-color: var(--primary-color);
             color: #FFFFFF;
             border-color: var(--primary-color);
         }
-        .mode-button:hover, .dimension-button:hover, .size-button:hover, .quality-button:hover, .format-button:hover {
+        .mode-button:hover, .dimension-button:hover, .size-button:hover, .quality-button:hover, .format-button:hover, .ratio-button:hover, .crop-size-button:hover {
             background-color: var(--secondary-color);
             color: #FFFFFF;
         }
@@ -316,18 +318,57 @@
         .sub-progress .progress-bar {
             height: 15px;
         }
+        .crop-section {
+            background-color: #fff;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+        .crop-container {
+            width: 100%;
+            max-width: 600px;
+            max-height: 400px;
+            overflow: hidden;
+            position: relative;
+        }
+        .crop-container img {
+            max-width: 100%;
+        }
+        #result-preview {
+            max-width: 100%;
+            max-height: 300px;
+            border: 1px dashed #ccc;
+            padding: 5px;
+            margin-top: 15px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+        }
+        .control-row {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>TENG 圖片處理工具 <span class="version">v3.0</span></h1>
+        <h1>TENG 圖片處理工具 <span class="version">v3.1 - 裁切功能強化版</span></h1>
         
         <div class="section">
             <label>處理模式</label>
             <div class="mode-buttons">
                 <button class="mode-button active" data-mode="resize" onclick="switchMode('resize')">尺寸調整/格式轉換</button>
+                <button class="mode-button" data-mode="crop" onclick="switchMode('crop')">圖片裁切</button>
                 <button class="mode-button" data-mode="base64" onclick="switchMode('base64')">Base64互轉</button>
-                <button class="mode-button" onclick="window.open('https://chia168168.github.io/Teng-imagecrop/', '_blank')">圖片裁切</button>
             </div>
         </div>
         
@@ -363,10 +404,87 @@
         </div>
         
         <div class="section">
+            <h3 style="margin: 0; font-size: 16px; color: #0033A0;">縮圖預覽</h3>
+            <div id="previewContainer" class="thumbnail-container"></div>
+        </div>
+        
+        <div class="section">
             <h3 id="fileListHeader" style="margin: 0; font-size: 16px; color: #0033A0;">
                 <span class="status-indicator status-ready"></span>已選擇的檔案：<span id="fileCount">0</span> 張
             </h3>
             <div id="fileList"></div>
+        </div>
+
+        <div id="cropSection" class="section mode-specific" data-mode="crop">
+            <h3 style="margin: 0; font-size: 16px; color: #0033A0;">裁切圖片</h3>
+            <div id="cropContainer" class="crop-container">
+                <img id="cropImage" style="max-width: 100%;" class="hidden">
+            </div>
+            <div class="file-button-container">
+                <button class="process-button" id="applyCropBtn" onclick="applyCropping()" disabled>應用裁切</button>
+                <button class="process-button" id="resetCropBtn" onclick="resetCropping()" disabled>重置裁切</button>
+            </div>
+
+            <div class="control-group">
+                <div class="control-row">
+                    <label>裁切比例</label>
+                    <div class="ratio-buttons">
+                        <button class="ratio-button active" data-value="1/1" onclick="setRatio('1/1')">1:1 (正方形)</button>
+                        <button class="ratio-button" data-value="NaN" onclick="setRatio('NaN')">自訂比例</button>
+                        <button class="ratio-button" data-value="16/9" onclick="setRatio('16/9')">16:9 (橫幅)</button>
+                        <button class="ratio-button" data-value="9/16" onclick="setRatio('9/16')">9:16 (直幅)</button>
+                        <button class="ratio-button" data-value="4/3" onclick="setRatio('4/3')">4:3 (標準)</button>
+                        <button class="ratio-button" data-value="3/4" onclick="setRatio('3/4')">3:4 (肖像)</button>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <label>輸出寬度 (px)</label>
+                    <div class="crop-size-buttons">
+                        <button class="crop-size-button" data-value="1920" onclick="setCropDimension('width', 1920)">1920</button>
+                        <button class="crop-size-button" data-value="1280" onclick="setCropDimension('width', 1280)">1280</button>
+                        <button class="crop-size-button active" data-value="1024" onclick="setCropDimension('width', 1024)">1024</button>
+                        <button class="crop-size-button" data-value="720" onclick="setCropDimension('width', 720)">720</button>
+                        <button class="crop-size-button" data-value="512" onclick="setCropDimension('width', 512)">512</button>
+                        <button class="crop-size-button" data-value="256" onclick="setCropDimension('width', 256)">256</button>
+                        <button class="crop-size-button" data-value="custom" onclick="setCropDimension('width', 'custom')">自訂</button>
+                    </div>
+                    <input type="number" id="cropWidthInput" value="1024" min="1" class="hidden">
+                </div>
+                <div class="control-row">
+                    <label>輸出高度 (px)</label>
+                    <div class="crop-size-buttons">
+                        <button class="crop-size-button" data-value="1920" onclick="setCropDimension('height', 1920)">1920</button>
+                        <button class="crop-size-button" data-value="1280" onclick="setCropDimension('height', 1280)">1280</button>
+                        <button class="crop-size-button active" data-value="1024" onclick="setCropDimension('height', 1024)">1024</button>
+                        <button class="crop-size-button" data-value="720" onclick="setCropDimension('height', 720)">720</button>
+                        <button class="crop-size-button" data-value="512" onclick="setCropDimension('height', 512)">512</button>
+                        <button class="crop-size-button" data-value="256" onclick="setCropDimension('height', 256)">256</button>
+                        <button class="crop-size-button" data-value="custom" onclick="setCropDimension('height', 'custom')">自訂</button>
+                    </div>
+                    <input type="number" id="cropHeightInput" value="1024" min="1" class="hidden">
+                </div>
+                <div class="control-row">
+                    <label>輸出格式</label>
+                    <div class="format-buttons">
+                        <button class="format-button active" data-value="image/jpeg" onclick="setCropFormat('image/jpeg')">JPEG</button>
+                        <button class="format-button" data-value="image/png" onclick="setCropFormat('image/png')">PNG</button>
+                        <button class="format-button" data-value="image/webp" onclick="setCropFormat('image/webp')">WebP</button>
+                    </div>
+                </div>
+                <div class="control-row">
+                    <label>輸出品質</label>
+                    <div class="quality-buttons">
+                        <button class="quality-button active" data-value="1.0" onclick="setCropQuality('1.0')">100%</button>
+                        <button class="quality-button" data-value="0.95" onclick="setCropQuality('0.95')">95%</button>
+                        <button class="quality-button" data-value="0.9" onclick="setCropQuality('0.9')">90%</button>
+                        <button class="quality-button" data-value="0.85" onclick="setCropQuality('0.85')">85%</button>
+                        <button class="quality-button" data-value="0.8" onclick="setCropQuality('0.8')">80%</button>
+                        <button class="quality-button" data-value="0.7" onclick="setCropQuality('0.7')">70%</button>
+                    </div>
+                </div>
+            </div>
+
+            <img id="resultPreview" src="" alt="裁切結果" class="hidden">
         </div>
         
         <div id="resizeOptions" class="section mode-specific controls" data-mode="resize">
@@ -474,11 +592,6 @@
             <button id="downloadButton">下載結果</button>
         </div>
         
-        <div class="section">
-            <h3 style="margin: 0; font-size: 16px; color: #0033A0;">縮圖預覽</h3>
-            <div id="previewContainer" class="thumbnail-container"></div>
-        </div>
-        
         <div class="tooltip">
             <span style="font-size: 12px; color: #005B99;">使用說明</span>
             <span class="tooltip-text">支援圖片尺寸調整、格式轉換（尺寸調整預設 JPEG，Base64 模式預設 PNG，品質 90%）及 Base64 互轉。HEIC/HEIF 支援，多檔案打包為 ZIP。請勿分享敏感 Base64 字串。資料夾選擇僅支援 Chrome、Edge 和 Safari。</span>
@@ -501,6 +614,9 @@
         let processedCount = 0;
         let totalToProcess = 0;
         let selectedFileType = null;
+        let cropper = null;
+        let currentCroppingFile = null;
+        let currentCropRatio = 1 / 1; // 預設 1:1
 
         // 檢查瀏覽器是否支援 webkitdirectory
         function checkDirectorySupport() {
@@ -526,7 +642,7 @@
             }
             
             const mode = document.querySelector('.mode-button.active').dataset.mode;
-            if ((inputId === 'base64FolderInput' || inputId === 'base64FileInput') && mode !== 'base64') {
+            if ((inputId === 'base64FileInput' || inputId === 'base64FolderInput') && mode !== 'base64') {
                 showError('請先切換到「Base64 互轉」模式！');
                 return;
             }
@@ -552,8 +668,7 @@
             const imageFolderInputContainer = document.getElementById('imageFolderInputContainer');
             const base64FileInputContainer = document.getElementById('base64FileInputContainer');
             const base64FolderInputContainer = document.getElementById('base64FolderInputContainer');
-            const qualityContainer = document.getElementById('qualityContainer');
-
+            
             // 重置所有按鈕為顯示狀態
             resizeButton.style.display = 'block';
             toBase64Button.style.display = 'block';
@@ -562,17 +677,16 @@
             imageFolderInputContainer.style.display = 'block';
             base64FileInputContainer.style.display = 'block';
             base64FolderInputContainer.style.display = 'block';
-            qualityContainer.style.display = 'block';
 
             // 根據模式和選擇的檔案類型調整顯示
             if (mode === 'resize') {
-                // 尺寸調整模式：隱藏Base64相關按鈕
+                // 尺寸調整模式：隱藏Base64與裁切相關按鈕
                 toBase64Button.style.display = 'none';
                 fromBase64Button.style.display = 'none';
                 base64FileInputContainer.style.display = 'none';
                 base64FolderInputContainer.style.display = 'none';
             } else if (mode === 'base64') {
-                // Base64模式：隱藏調整尺寸按鈕
+                // Base64模式：隱藏調整尺寸與裁切按鈕
                 resizeButton.style.display = 'none';
                 
                 // 根據選擇的檔案類型調整顯示
@@ -585,6 +699,13 @@
                     imageFileInputContainer.style.display = 'none';
                     imageFolderInputContainer.style.display = 'none';
                 }
+            } else if (mode === 'crop') {
+                // 裁切模式：隱藏其他按鈕
+                resizeButton.style.display = 'none';
+                toBase64Button.style.display = 'none';
+                fromBase64Button.style.display = 'none';
+                base64FileInputContainer.style.display = 'none';
+                base64FolderInputContainer.style.display = 'none';
             }
         }
 
@@ -599,7 +720,7 @@
                 btn.classList.toggle('active', btn.dataset.mode === mode);
             });
             document.querySelectorAll('.mode-specific').forEach(el => {
-                el.style.display = el.dataset.mode === mode ? 'block' : 'none';
+                el.style.display = el.dataset.mode === mode ? 'flex' : 'none';
             });
             
             // 設置預設格式和品質
@@ -609,21 +730,154 @@
             } else if (mode === 'base64') {
                 currentFormatValue = 'image/jpeg';
                 currentQualityValue = '0.9';
+            } else if (mode === 'crop') {
+                // 裁切模式有獨立的格式和品質設定
+                document.getElementById('cropWidthInput').value = 1024;
+                document.getElementById('cropHeightInput').value = 1024;
+                currentQualityValue = '1.0';
             }
             
-            document.querySelectorAll('.format-button').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.value === currentFormatValue);
+            // 獨立處理兩個區塊的品質按鈕 active 狀態
+            document.querySelectorAll('#resizeOptions .quality-button').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.value === '0.9');
             });
-            document.querySelectorAll('.quality-button').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.value === currentQualityValue);
+
+            document.querySelectorAll('#cropSection .quality-button').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.value === '1.0');
+            });
+
+            // 獨立處理兩個區塊的格式按鈕 active 狀態
+            document.querySelectorAll('#resizeOptions .format-button').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.value === 'image/jpeg');
             });
             
+            document.querySelectorAll('#cropSection .format-button').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.value === 'image/jpeg');
+            });
+
             toggleQualityContainer();
-            clearFiles();
+            clearFiles(); // 這裡的 clearFiles() 必須在設定完預設值之後執行
             if (mode === 'resize') {
                 switchDimensionMode(currentDimensionMode);
             }
+            
+            if (mode === 'crop') {
+                document.getElementById('applyCropBtn').disabled = true;
+                setCropDimension('width', 1024);
+                setCropDimension('height', 1024);
+            }
         }
+
+        // 裁切選項：設定裁切比例
+        function setRatio(value) {
+            const ratioButtons = document.querySelectorAll('.ratio-button');
+            ratioButtons.forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`.ratio-button[data-value="${value}"]`).classList.add('active');
+            
+            const [width, height] = value.split('/').map(Number);
+            currentCropRatio = width / height;
+
+            if (cropper) {
+                cropper.setAspectRatio(currentCropRatio);
+            }
+            
+            updateCropDimensionsBasedOnRatio();
+        }
+
+        // 裁切選項：設定輸出格式
+        function setCropFormat(value) {
+            const formatButtons = document.querySelectorAll('#cropSection .format-buttons .format-button');
+            formatButtons.forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`#cropSection .format-button[data-value="${value}"]`).classList.add('active');
+            currentFormatValue = value;
+        }
+
+        // 裁切選項：設定輸出品質
+        function setCropQuality(value) {
+            const qualityButtons = document.querySelectorAll('#cropSection .quality-buttons .quality-button');
+            qualityButtons.forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`#cropSection .quality-button[data-value="${value}"]`).classList.add('active');
+            currentQualityValue = parseFloat(value);
+        }
+
+        // 裁切選項：設定輸出寬度/高度
+        function setCropDimension(type, value) {
+            const input = document.getElementById(`crop${type.charAt(0).toUpperCase() + type.slice(1)}Input`);
+            const buttons = document.querySelectorAll(`#cropSection .crop-size-buttons`);
+            
+            buttons.forEach(container => {
+                container.querySelectorAll('.crop-size-button').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+            });
+
+            if (value === 'custom') {
+                input.classList.remove('hidden');
+                document.querySelector(`#cropSection .crop-size-button[data-value="custom"]`).classList.add('active');
+            } else {
+                input.classList.add('hidden');
+                input.value = value;
+                document.querySelector(`#cropSection .crop-size-button[data-value="${value}"]`).classList.add('active');
+            }
+            updateCropDimensionsBasedOnRatio();
+        }
+
+        // 裁切選項：自動計算尺寸
+        function updateCropDimensions() {
+            const widthInput = document.getElementById('cropWidthInput');
+            const heightInput = document.getElementById('cropHeightInput');
+            
+            if (isNaN(currentCropRatio) || currentCropRatio === 0) return;
+
+            if (widthInput.value) {
+                const newWidth = parseInt(widthInput.value);
+                if (!isNaN(newWidth) && newWidth > 0) {
+                    heightInput.value = Math.round(newWidth / currentCropRatio);
+                }
+            } else if (heightInput.value) {
+                const newHeight = parseInt(heightInput.value);
+                if (!isNaN(newHeight) && newHeight > 0) {
+                    widthInput.value = Math.round(newHeight * currentCropRatio);
+                }
+            }
+        }
+        
+        // 裁切選項：根據比例更新尺寸
+        function updateCropDimensionsBasedOnRatio() {
+            const widthInput = document.getElementById('cropWidthInput');
+            const heightInput = document.getElementById('cropHeightInput');
+            const isCustomRatio = isNaN(currentCropRatio);
+            
+            if (isCustomRatio) {
+                widthInput.oninput = null;
+                heightInput.oninput = null;
+                return;
+            }
+
+            widthInput.oninput = debounce(() => {
+                const newWidth = parseInt(widthInput.value);
+                if (!isNaN(newWidth) && newWidth > 0) {
+                    heightInput.value = Math.round(newWidth / currentCropRatio);
+                }
+            }, 300);
+
+            heightInput.oninput = debounce(() => {
+                const newHeight = parseInt(heightInput.value);
+                if (!isNaN(newHeight) && newHeight > 0) {
+                    widthInput.value = Math.round(newHeight * currentCropRatio);
+                }
+            }, 300);
+            
+            const currentWidth = parseInt(widthInput.value);
+            const currentHeight = parseInt(heightInput.value);
+            
+            if (currentWidth > 0) {
+                heightInput.value = Math.round(currentWidth / currentCropRatio);
+            } else if (currentHeight > 0) {
+                widthInput.value = Math.round(currentHeight * currentCropRatio);
+            }
+        }
+
 
         // 尺寸模式切換
         function switchDimensionMode(mode) {
@@ -673,14 +927,11 @@
                 btn.classList.toggle('active', btn.dataset.value === value);
             });
             currentFormatValue = value;
-            if (value === 'image/jpeg') {
-                currentQualityValue = '0.9';
-                document.querySelectorAll('.quality-button').forEach(btn => {
-                    btn.classList.toggle('active', btn.dataset.value === '0.9');
-                });
-                document.getElementById('qualityInput').classList.add('hidden');
+            if (value === 'image/jpeg' || value === 'image/webp') {
+                toggleQualityContainer();
+            } else {
+                toggleQualityContainer();
             }
-            toggleQualityContainer();
             updateFileList();
         }
 
@@ -702,21 +953,30 @@
             document.getElementById('progressContainer').style.display = 'none';
             document.getElementById('fileCount').textContent = '0';
             document.querySelector('.status-indicator').className = 'status-indicator status-ready';
+            
+            // 重置尺寸調整區塊的預設值
             currentWidthValue = '1024';
             currentHeightValue = '1024';
-            currentQualityValue = '0.9';
-            document.querySelectorAll('.size-button').forEach(btn => {
+            document.querySelectorAll('#resizeOptions .size-button').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.value === '1024');
-            });
-            document.querySelectorAll('.quality-button').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.value === '0.9');
             });
             document.getElementById('widthInput').classList.add('hidden');
             document.getElementById('heightInput').classList.add('hidden');
             document.getElementById('qualityInput').classList.add('hidden');
-            document.querySelectorAll('.format-button').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.value === currentFormatValue);
-            });
+            
+            // 清空裁切相關
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+            document.getElementById('cropImage').src = '';
+            document.getElementById('resultPreview').src = '';
+            document.getElementById('cropImage').classList.add('hidden');
+            document.getElementById('resultPreview').classList.add('hidden');
+            document.getElementById('applyCropBtn').disabled = true;
+            document.getElementById('resetCropBtn').disabled = true;
+            currentCroppingFile = null;
+
             updateProcessButtons();
             updateFileList();
         }
@@ -750,6 +1010,10 @@
         document.getElementById('imageFolderInput').addEventListener('change', e => handleFileSelect(e, true, 'image'));
         document.getElementById('base64FileInput').addEventListener('change', e => handleFileSelect(e, true, 'base64'));
         document.getElementById('base64FolderInput').addEventListener('change', e => { handleFileSelect(e, true, 'base64'); });
+        
+        // 裁切選項輸入框事件
+        document.getElementById('cropWidthInput').addEventListener('input', debounce(() => updateCropDimensions('width'), 300));
+        document.getElementById('cropHeightInput').addEventListener('input', debounce(() => updateCropDimensions('height'), 300));
 
         // 下載按鈕
         document.getElementById('downloadButton').addEventListener('click', () => {
@@ -866,6 +1130,15 @@
                 if (document.querySelector('.mode-button.active').dataset.mode === 'resize') {
                     updateDimensionInputs();
                 }
+
+                // 裁切模式下，自動載入第一個檔案
+                if (document.querySelector('.mode-button.active').dataset.mode === 'crop' && originalImages.length === 1) {
+                    currentCroppingFile = originalImages[0];
+                    document.getElementById('cropImage').src = imageSrc;
+                    document.getElementById('cropImage').classList.remove('hidden');
+                    startCropping();
+                    document.getElementById('resultPreview').classList.add('hidden');
+                }
             };
             img.onerror = function() {
                 showError(`無法載入圖片：${file.name}，請確認檔案格式是否為 JPEG、PNG、HEIC 或 HEIF！`);
@@ -963,6 +1236,9 @@
             });
             document.getElementById('fileCount').textContent = originalImages.length;
             updateProcessButtons();
+            if (document.querySelector('.mode-button.active').dataset.mode === 'crop' && originalImages.length > 1) {
+                showError('裁切功能目前僅支援單張圖片，已自動選擇第一張圖片進行裁切！');
+            }
         }
 
         // 尺寸輸入欄位更新
@@ -1313,6 +1589,86 @@
             }
         }
 
+        // 裁切功能相關
+        function startCropping() {
+            if (cropper) {
+                cropper.destroy();
+            }
+            if (!currentCroppingFile) {
+                showError('請先選擇一張圖片！');
+                return;
+            }
+            
+            const cropImage = document.getElementById('cropImage');
+            cropper = new Cropper(cropImage, {
+                viewMode: 1,
+                aspectRatio: currentCropRatio,
+                responsive: true,
+                dragMode: 'move',
+                autoCropArea: 0.8
+            });
+            document.getElementById('applyCropBtn').disabled = false;
+            document.getElementById('resetCropBtn').disabled = false;
+            showSuccess('已進入裁切模式，請拖動裁切框進行調整。');
+        }
+
+        async function applyCropping() {
+            if (!cropper) {
+                showError('請先選擇圖片！');
+                return;
+            }
+            isProcessing = true;
+            disableUI();
+
+            const targetWidth = parseInt(document.getElementById('cropWidthInput').value);
+            const targetHeight = parseInt(document.getElementById('cropHeightInput').value);
+            const targetQuality = currentQualityValue;
+            const targetFormat = currentFormatValue;
+            
+            try {
+                const croppedCanvas = cropper.getCroppedCanvas({
+                    width: targetWidth,
+                    height: targetHeight
+                });
+
+                const croppedBlob = await new Promise(resolve => {
+                    croppedCanvas.toBlob(blob => {
+                        resolve(blob);
+                    }, targetFormat, targetQuality);
+                });
+
+                const url = URL.createObjectURL(croppedBlob);
+                const resultPreview = document.getElementById('resultPreview');
+                resultPreview.src = url;
+                resultPreview.classList.remove('hidden');
+
+                const filenameWithoutExt = currentCroppingFile.file.name.split('.').slice(0, -1).join('.');
+                const extension = targetFormat.split('/')[1].replace('jpeg', 'jpg');
+                downloadBlob = croppedBlob;
+                downloadFileName = `${filenameWithoutExt}_cropped.${extension}`;
+                
+                document.getElementById('downloadButton').textContent = '下載裁切後圖片';
+                document.getElementById('downloadButton').style.display = 'block';
+                showSuccess('圖片裁切完成！');
+            } catch (e) {
+                showError('裁切圖片時發生錯誤：' + e.message);
+            } finally {
+                isProcessing = false;
+                enableUI();
+            }
+        }
+
+        function resetCropping() {
+            if (cropper) {
+                cropper.reset();
+                document.getElementById('resultPreview').classList.add('hidden');
+                document.getElementById('downloadButton').style.display = 'none';
+                showSuccess('裁切已重置。');
+            } else {
+                showError('尚未開始裁切！');
+            }
+        }
+
         // UI 相關函數
         function updateProgress(processed, total, text) {
             const percentage = Math.round((processed / total) * 100);
@@ -1350,6 +1706,9 @@
             document.querySelectorAll('input').forEach(input => input.disabled = false);
             document.querySelectorAll('textarea').forEach(textarea => textarea.disabled = false);
             updateProcessButtons(); // 重新啟用按鈕
+            if (document.querySelector('.mode-button.active').dataset.mode === 'crop' && originalImages.length > 0) {
+                document.getElementById('applyCropBtn').disabled = false;
+            }
         }
 
         // 初始化
