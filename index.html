@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TENG 圖片處理工具 v3.1 - 裁切功能強化版</title>
+    <title>TENG 圖片處理工具 v3.0</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://unpkg.com/file-saver@2.0.5/dist/FileSaver.min.js"></script>
@@ -361,7 +361,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>TENG 圖片處理工具 <span class="version">v3.1 - 裁切功能強化版</span></h1>
+        <h1>TENG 圖片處理工具 <span class="version">v3.0</span></h1>
         
         <div class="section">
             <label>處理模式</label>
@@ -439,7 +439,7 @@
                 </div>
                 <div class="control-row">
                     <label>輸出寬度 (px)</label>
-                    <div class="crop-size-buttons">
+                    <div id="cropWidthButtons" class="crop-size-buttons" data-type="width">
                         <button class="crop-size-button" data-value="1920" onclick="setCropDimension('width', 1920)">1920</button>
                         <button class="crop-size-button" data-value="1280" onclick="setCropDimension('width', 1280)">1280</button>
                         <button class="crop-size-button active" data-value="1024" onclick="setCropDimension('width', 1024)">1024</button>
@@ -452,7 +452,7 @@
                 </div>
                 <div class="control-row">
                     <label>輸出高度 (px)</label>
-                    <div class="crop-size-buttons">
+                    <div id="cropHeightButtons" class="crop-size-buttons" data-type="height">
                         <button class="crop-size-button" data-value="1920" onclick="setCropDimension('height', 1920)">1920</button>
                         <button class="crop-size-button" data-value="1280" onclick="setCropDimension('height', 1280)">1280</button>
                         <button class="crop-size-button active" data-value="1024" onclick="setCropDimension('height', 1024)">1024</button>
@@ -462,6 +462,10 @@
                         <button class="crop-size-button" data-value="custom" onclick="setCropDimension('height', 'custom')">自訂</button>
                     </div>
                     <input type="number" id="cropHeightInput" value="1024" min="1" class="hidden">
+                </div>
+                <div class="control-row">
+                    <label>預計輸出尺寸</label>
+                    <span id="croppedDimensionsDisplay" style="font-weight: bold; color: var(--primary-color);">1024 x 1024 px</span>
                 </div>
                 <div class="control-row">
                     <label>輸出格式</label>
@@ -765,6 +769,7 @@
                 document.getElementById('applyCropBtn').disabled = true;
                 setCropDimension('width', 1024);
                 setCropDimension('height', 1024);
+                updateCroppedDimensionsDisplay();
             }
         }
 
@@ -803,79 +808,69 @@
         // 裁切選項：設定輸出寬度/高度
         function setCropDimension(type, value) {
             const input = document.getElementById(`crop${type.charAt(0).toUpperCase() + type.slice(1)}Input`);
-            const buttons = document.querySelectorAll(`#cropSection .crop-size-buttons`);
-            
-            buttons.forEach(container => {
-                container.querySelectorAll('.crop-size-button').forEach(btn => {
-                    btn.classList.remove('active');
-                });
-            });
+            const otherType = type === 'width' ? 'height' : 'width';
+            const otherInput = document.getElementById(`crop${otherType.charAt(0).toUpperCase() + otherType.slice(1)}Input`);
 
+            // 重置所有相關按鈕的 active 狀態
+            document.querySelectorAll(`.crop-size-buttons[data-type="width"] .crop-size-button`).forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll(`.crop-size-buttons[data-type="height"] .crop-size-button`).forEach(btn => btn.classList.remove('active'));
+            
+            // 將點擊的按鈕設為 active
+            const clickedButton = document.querySelector(`.crop-size-buttons[data-type="${type}"] .crop-size-button[data-value="${value}"]`);
+            if (clickedButton) {
+                clickedButton.classList.add('active');
+            }
+
+            // 如果是自訂，不隱藏輸入框
             if (value === 'custom') {
                 input.classList.remove('hidden');
-                document.querySelector(`#cropSection .crop-size-button[data-value="custom"]`).classList.add('active');
             } else {
                 input.classList.add('hidden');
+            }
+
+            // 根據比例連動更新
+            if (!isNaN(currentCropRatio)) {
                 input.value = value;
-                document.querySelector(`#cropSection .crop-size-button[data-value="${value}"]`).classList.add('active');
+                if (type === 'width') {
+                    otherInput.value = Math.round(input.value / currentCropRatio);
+                } else { // type === 'height'
+                    otherInput.value = Math.round(input.value * currentCropRatio);
+                }
+            } else {
+                input.value = value;
             }
-            updateCropDimensionsBasedOnRatio();
+
+            updateCroppedDimensionsDisplay();
+        }
+                
+        // 裁切選項：更新預計輸出尺寸顯示
+        function updateCroppedDimensionsDisplay() {
+            const width = parseInt(document.getElementById('cropWidthInput').value);
+            const height = parseInt(document.getElementById('cropHeightInput').value);
+            document.getElementById('croppedDimensionsDisplay').textContent = `${width} x ${height} px`;
         }
 
-        // 裁切選項：自動計算尺寸
-        function updateCropDimensions() {
+        // 裁切選項：根據比例自動計算尺寸
+       function updateCropDimensionsBasedOnRatio() {
             const widthInput = document.getElementById('cropWidthInput');
             const heightInput = document.getElementById('cropHeightInput');
-            
-            if (isNaN(currentCropRatio) || currentCropRatio === 0) return;
 
-            if (widthInput.value) {
-                const newWidth = parseInt(widthInput.value);
-                if (!isNaN(newWidth) && newWidth > 0) {
-                    heightInput.value = Math.round(newWidth / currentCropRatio);
-                }
-            } else if (heightInput.value) {
-                const newHeight = parseInt(heightInput.value);
-                if (!isNaN(newHeight) && newHeight > 0) {
-                    widthInput.value = Math.round(newHeight * currentCropRatio);
-                }
-            }
-        }
-        
-        // 裁切選項：根據比例更新尺寸
-        function updateCropDimensionsBasedOnRatio() {
-            const widthInput = document.getElementById('cropWidthInput');
-            const heightInput = document.getElementById('cropHeightInput');
-            const isCustomRatio = isNaN(currentCropRatio);
-            
-            if (isCustomRatio) {
-                widthInput.oninput = null;
-                heightInput.oninput = null;
+            // 如果是自訂比例模式，不進行連動
+            if (isNaN(currentCropRatio)) {
+                updateCroppedDimensionsDisplay();
                 return;
             }
 
-            widthInput.oninput = debounce(() => {
-                const newWidth = parseInt(widthInput.value);
-                if (!isNaN(newWidth) && newWidth > 0) {
-                    heightInput.value = Math.round(newWidth / currentCropRatio);
-                }
-            }, 300);
-
-            heightInput.oninput = debounce(() => {
-                const newHeight = parseInt(heightInput.value);
-                if (!isNaN(newHeight) && newHeight > 0) {
-                    widthInput.value = Math.round(newHeight * currentCropRatio);
-                }
-            }, 300);
+            // 固定比例模式，連動更新
+            const newWidth = parseInt(widthInput.value);
+            const newHeight = parseInt(heightInput.value);
             
-            const currentWidth = parseInt(widthInput.value);
-            const currentHeight = parseInt(heightInput.value);
-            
-            if (currentWidth > 0) {
-                heightInput.value = Math.round(currentWidth / currentCropRatio);
-            } else if (currentHeight > 0) {
-                widthInput.value = Math.round(currentHeight * currentCropRatio);
+            if (!isNaN(newWidth) && newWidth > 0) {
+                heightInput.value = Math.round(newWidth / currentCropRatio);
+            } else if (!isNaN(newHeight) && newHeight > 0) {
+                widthInput.value = Math.round(newHeight * currentCropRatio);
             }
+            updateCroppedDimensionsDisplay();
         }
 
 
@@ -976,6 +971,12 @@
             document.getElementById('applyCropBtn').disabled = true;
             document.getElementById('resetCropBtn').disabled = true;
             currentCroppingFile = null;
+            
+            // 重置裁切選項
+            setRatio('1/1');
+            setCropDimension('width', 1024);
+            setCropDimension('height', 1024);
+            updateCroppedDimensionsDisplay();
 
             updateProcessButtons();
             updateFileList();
@@ -1012,8 +1013,8 @@
         document.getElementById('base64FolderInput').addEventListener('change', e => { handleFileSelect(e, true, 'base64'); });
         
         // 裁切選項輸入框事件
-        document.getElementById('cropWidthInput').addEventListener('input', debounce(() => updateCropDimensions('width'), 300));
-        document.getElementById('cropHeightInput').addEventListener('input', debounce(() => updateCropDimensions('height'), 300));
+        document.getElementById('cropWidthInput').addEventListener('input', debounce(() => updateCropDimensionsBasedOnRatio(), 300));
+        document.getElementById('cropHeightInput').addEventListener('input', debounce(() => updateCropDimensionsBasedOnRatio(), 300));
 
         // 下載按鈕
         document.getElementById('downloadButton').addEventListener('click', () => {
