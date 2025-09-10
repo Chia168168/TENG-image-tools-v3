@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TENG 圖片處理工具 v3.1 - 裁切功能強化版</title>
+    <title>TENG 圖片處理工具 v3.0</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://unpkg.com/file-saver@2.0.5/dist/FileSaver.min.js"></script>
@@ -361,14 +361,14 @@
 </head>
 <body>
     <div class="container">
-        <h1>TENG 圖片處理工具 <span class="version">v3.1 - 裁切功能強化版</span></h1>
+        <h1>TENG 圖片處理工具 <span class="version">v3.0</span></h1>
         
         <div class="section">
             <label>處理模式</label>
             <div class="mode-buttons">
                 <button class="mode-button active" data-mode="resize" onclick="switchMode('resize')">尺寸調整/格式轉換</button>
-                <button class="mode-button" data-mode="base64" onclick="switchMode('base64')">Base64互轉</button>
                 <button class="mode-button" data-mode="crop" onclick="switchMode('crop')">圖片裁切</button>
+                <button class="mode-button" data-mode="base64" onclick="switchMode('base64')">Base64互轉</button>
             </div>
         </div>
         
@@ -629,7 +629,7 @@
             return 'webkitdirectory' in input;
         }
 
-        // 防抖函式
+        // 防抖函數
         function debounce(func, wait) {
             let timeout;
             return function (...args) {
@@ -740,25 +740,31 @@
                 document.getElementById('cropHeightInput').value = 1024;
                 currentQualityValue = '1.0';
             }
+            
             // 獨立處理兩個區塊的品質按鈕 active 狀態
             document.querySelectorAll('#resizeOptions .quality-button').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.value === '0.9');
             });
+
             document.querySelectorAll('#cropSection .quality-button').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.value === '1.0');
             });
+
             // 獨立處理兩個區塊的格式按鈕 active 狀態
             document.querySelectorAll('#resizeOptions .format-button').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.value === 'image/jpeg');
             });
+            
             document.querySelectorAll('#cropSection .format-button').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.value === 'image/jpeg');
             });
+
             toggleQualityContainer();
             clearFiles(); // 這裡的 clearFiles() 必須在設定完預設值之後執行
             if (mode === 'resize') {
                 switchDimensionMode(currentDimensionMode);
             }
+            
             if (mode === 'crop') {
                 document.getElementById('applyCropBtn').disabled = true;
                 setCropDimension('width', 1024);
@@ -766,16 +772,20 @@
                 updateCroppedDimensionsDisplay();
             }
         }
+
         // 裁切選項：設定裁切比例
         function setRatio(value) {
             const ratioButtons = document.querySelectorAll('.ratio-button');
             ratioButtons.forEach(btn => btn.classList.remove('active'));
             document.querySelector(`.ratio-button[data-value="${value}"]`).classList.add('active');
+            
             const [width, height] = value.split('/').map(Number);
             currentCropRatio = width / height;
+
             if (cropper) {
                 cropper.setAspectRatio(currentCropRatio);
             }
+            
             updateCropDimensionsBasedOnRatio();
         }
 
@@ -800,26 +810,39 @@
             const input = document.getElementById(`crop${type.charAt(0).toUpperCase() + type.slice(1)}Input`);
             const otherType = type === 'width' ? 'height' : 'width';
             const otherInput = document.getElementById(`crop${otherType.charAt(0).toUpperCase() + otherType.slice(1)}Input`);
-            // 取消其他維度的按鈕 active 狀態
-            document.querySelectorAll(`.crop-size-buttons[data-type="${otherType}"] .crop-size-button`).forEach(btn => {
-                btn.classList.remove('active');
-            });
-            otherInput.classList.add('hidden');
-            document.querySelectorAll(`.crop-size-buttons[data-type="${type}"] .crop-size-button`).forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.querySelector(`.crop-size-buttons[data-type="${type}"] .crop-size-button[data-value="${value}"]`).classList.add('active');
+
+            // 重置所有相關按鈕的 active 狀態
+            document.querySelectorAll(`.crop-size-buttons[data-type="width"] .crop-size-button`).forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll(`.crop-size-buttons[data-type="height"] .crop-size-button`).forEach(btn => btn.classList.remove('active'));
+            
+            // 將點擊的按鈕設為 active
+            const clickedButton = document.querySelector(`.crop-size-buttons[data-type="${type}"] .crop-size-button[data-value="${value}"]`);
+            if (clickedButton) {
+                clickedButton.classList.add('active');
+            }
+
+            // 如果是自訂，不隱藏輸入框
             if (value === 'custom') {
                 input.classList.remove('hidden');
-                updateCropDimensionsBasedOnRatio();
             } else {
                 input.classList.add('hidden');
-                input.value = value;
-                updateCropDimensionsBasedOnRatio();
             }
+
+            // 根據比例連動更新
+            if (!isNaN(currentCropRatio)) {
+                input.value = value;
+                if (type === 'width') {
+                    otherInput.value = Math.round(input.value / currentCropRatio);
+                } else { // type === 'height'
+                    otherInput.value = Math.round(input.value * currentCropRatio);
+                }
+            } else {
+                input.value = value;
+            }
+
             updateCroppedDimensionsDisplay();
         }
-
+                
         // 裁切選項：更新預計輸出尺寸顯示
         function updateCroppedDimensionsDisplay() {
             const width = parseInt(document.getElementById('cropWidthInput').value);
@@ -828,42 +851,28 @@
         }
 
         // 裁切選項：根據比例自動計算尺寸
-        function updateCropDimensionsBasedOnRatio() {
+       function updateCropDimensionsBasedOnRatio() {
             const widthInput = document.getElementById('cropWidthInput');
             const heightInput = document.getElementById('cropHeightInput');
-            const isCustomRatio = isNaN(currentCropRatio);
-            // 如果是自訂比例，則不啟用自動計算
-            if (isCustomRatio) {
-                widthInput.oninput = debounce(() => updateCroppedDimensionsDisplay(), 300);
-                heightInput.oninput = debounce(() => updateCroppedDimensionsDisplay(), 300);
+
+            // 如果是自訂比例模式，不進行連動
+            if (isNaN(currentCropRatio)) {
+                updateCroppedDimensionsDisplay();
                 return;
             }
-            widthInput.oninput = debounce(() => {
-                const newWidth = parseInt(widthInput.value);
-                if (!isNaN(newWidth) && newWidth > 0) {
-                    heightInput.value = Math.round(newWidth / currentCropRatio);
-                    updateCroppedDimensionsDisplay();
-                }
-            }, 300);
-            heightInput.oninput = debounce(() => {
-                const newHeight = parseInt(heightInput.value);
-                if (!isNaN(newHeight) && newHeight > 0) {
-                    widthInput.value = Math.round(newHeight * currentCropRatio);
-                    updateCroppedDimensionsDisplay();
-                }
-            }, 300);
-            const currentWidth = parseInt(widthInput.value);
-            const currentHeight = parseInt(heightInput.value);
-            // 如果寬度有值，以寬度為主計算高度
-            if (currentWidth > 0) {
-                heightInput.value = Math.round(currentWidth / currentCropRatio);
-            }
-            // 如果寬度沒有值但高度有值，以高度為主計算寬度
-            else if (currentHeight > 0) {
-                widthInput.value = Math.round(currentHeight * currentCropRatio);
+
+            // 固定比例模式，連動更新
+            const newWidth = parseInt(widthInput.value);
+            const newHeight = parseInt(heightInput.value);
+            
+            if (!isNaN(newWidth) && newWidth > 0) {
+                heightInput.value = Math.round(newWidth / currentCropRatio);
+            } else if (!isNaN(newHeight) && newHeight > 0) {
+                widthInput.value = Math.round(newHeight * currentCropRatio);
             }
             updateCroppedDimensionsDisplay();
         }
+
 
         // 尺寸模式切換
         function switchDimensionMode(mode) {
@@ -882,175 +891,825 @@
         // 設置寬度或高度值
         function setSize(type, value) {
             const buttons = document.querySelectorAll(`#${type}Container .size-button`);
+            buttons.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.value === value);
+            });
             const input = document.getElementById(`${type}Input`);
-            buttons.forEach(btn => btn.classList.remove('active'));
-            document.querySelector(`#${type}Container .size-button[data-value="${value}"]`).classList.add('active');
-            if (value === 'custom') {
-                input.classList.remove('hidden');
-                input.focus();
-                input.select();
+            input.classList.toggle('hidden', value !== 'custom');
+            if (type === 'width') {
+                currentWidthValue = value;
             } else {
-                input.classList.add('hidden');
+                currentHeightValue = value;
+            }
+            updateDimensions();
+            updateFileList();
+        }
+
+        // 設置品質值
+        function setQuality(value) {
+            document.querySelectorAll('.quality-button').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.value === value);
+            });
+            const input = document.getElementById('qualityInput');
+            input.classList.toggle('hidden', value !== 'custom');
+            currentQualityValue = value;
+            updateFileList();
+        }
+
+        // 設置輸出格式
+        function setFormat(value) {
+            document.querySelectorAll('.format-button').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.value === value);
+            });
+            currentFormatValue = value;
+            if (value === 'image/jpeg' || value === 'image/webp') {
+                toggleQualityContainer();
+            } else {
+                toggleQualityContainer();
+            }
+            updateFileList();
+        }
+
+        // 清空檔案
+        function clearFiles() {
+            if (isProcessing) {
+                showError('請等待當前處理完成後再清空檔案');
+                return;
+            }
+            
+            originalImages = [];
+            processedBlobs = [];
+            base64Data = [];
+            selectedFileType = null;
+            document.getElementById('fileList').innerHTML = '';
+            document.getElementById('previewContainer').innerHTML = '';
+            document.getElementById('base64Text').value = '';
+            document.getElementById('downloadButton').style.display = 'none';
+            document.getElementById('progressContainer').style.display = 'none';
+            document.getElementById('fileCount').textContent = '0';
+            document.querySelector('.status-indicator').className = 'status-indicator status-ready';
+            
+            // 重置尺寸調整區塊的預設值
+            currentWidthValue = '1024';
+            currentHeightValue = '1024';
+            document.querySelectorAll('#resizeOptions .size-button').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.value === '1024');
+            });
+            document.getElementById('widthInput').classList.add('hidden');
+            document.getElementById('heightInput').classList.add('hidden');
+            document.getElementById('qualityInput').classList.add('hidden');
+            
+            // 清空裁切相關
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+            document.getElementById('cropImage').src = '';
+            document.getElementById('resultPreview').src = '';
+            document.getElementById('cropImage').classList.add('hidden');
+            document.getElementById('resultPreview').classList.add('hidden');
+            document.getElementById('applyCropBtn').disabled = true;
+            document.getElementById('resetCropBtn').disabled = true;
+            currentCroppingFile = null;
+            
+            // 重置裁切選項
+            setRatio('1/1');
+            setCropDimension('width', 1024);
+            setCropDimension('height', 1024);
+            updateCroppedDimensionsDisplay();
+
+            updateProcessButtons();
+            updateFileList();
+        }
+
+        // 顯示錯誤訊息
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            const successDiv = document.getElementById('successMessage');
+            successDiv.style.display = 'none';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        // 顯示成功訊息
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.style.display = 'none';
+            setTimeout(() => {
+                successDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        // 處理檔案輸入
+        document.getElementById('imageInput').addEventListener('change', e => handleFileSelect(e, true, 'image'));
+        document.getElementById('imageFolderInput').addEventListener('change', e => handleFileSelect(e, true, 'image'));
+        document.getElementById('base64FileInput').addEventListener('change', e => handleFileSelect(e, true, 'base64'));
+        document.getElementById('base64FolderInput').addEventListener('change', e => { handleFileSelect(e, true, 'base64'); });
+        
+        // 裁切選項輸入框事件
+        document.getElementById('cropWidthInput').addEventListener('input', debounce(() => updateCropDimensionsBasedOnRatio(), 300));
+        document.getElementById('cropHeightInput').addEventListener('input', debounce(() => updateCropDimensionsBasedOnRatio(), 300));
+
+        // 下載按鈕
+        document.getElementById('downloadButton').addEventListener('click', () => {
+            if (downloadBlob && downloadFileName) {
+                saveAs(downloadBlob, downloadFileName);
+            } else {
+                showError('無可下載的檔案，請先處理檔案！');
+            }
+        });
+
+        // 核心檔案處理邏輯
+        async function handleFileSelect(e, append = false, type = 'image') {
+            const files = e.target.files;
+            if (!files || files.length === 0) {
+                showError('未選擇任何檔案，請重新選擇！');
+                return;
+            }
+            if (!append) {
+                clearFiles();
+            }
+
+            let validFiles = Array.from(files);
+            
+            if (type === 'base64') {
+                validFiles = validFiles.filter(file => file.name.toLowerCase().endsWith('.txt'));
+                if (validFiles.length === 0) {
+                    showError('Base64 資料夾中無 .txt 檔案，請選擇包含 .txt 的資料夾！');
+                    return;
+                }
+            } else if (type === 'image') {
+                validFiles = validFiles.filter(file => {
+                    const ext = file.name.toLowerCase();
+                    return ext.match(/\.(jpeg|jpg|png|gif|bmp|webp|heic|heif)$/);
+                });
+                if (validFiles.length === 0) {
+                    showError('圖片資料夾中無支援的圖片檔案（JPEG、PNG、GIF、BMP、WebP、HEIC、HEIF），請重新選擇！');
+                    return;
+                }
+            }
+
+            // 設置檔案類型並更新按鈕
+            selectedFileType = type;
+            updateProcessButtons();
+
+            // 顯示載入中的狀態
+            document.querySelector('.status-indicator').className = 'status-indicator status-processing';
+            document.getElementById('fileCount').textContent = validFiles.length;
+
+            // 處理檔案，包含 HEIC/HEIF 轉換
+            await processFiles(validFiles, type);
+
+            document.querySelector('.status-indicator').className = 'status-indicator status-complete';
+        }
+
+        async function processFiles(files, type) {
+            for (const file of files) {
+                if (originalImages.some(img => img.file.name === file.name && img.file.size === file.size)) {
+                    showError(`檔案 ${file.name} 已存在，請選擇其他檔案！`);
+                    continue;
+                }
+                
+                let processedFile = file;
+                if (type === 'image') {
+                    const isHeicHeif = await HeicTo.isHeic(file);
+                    if (isHeicHeif) {
+                        try {
+                            const jpegBlob = await HeicTo({
+                                blob: file,
+                                type: 'image/jpeg',
+                                quality: 0.8
+                            });
+                            processedFile = new File([jpegBlob], file.name.replace(/\.(heic|heif)$/i, '.jpeg'), { type: 'image/jpeg' });
+                        } catch (err) {
+                            showError(`HEIC/HEIF 轉換失敗 (${file.name})：${err.message}`);
+                            continue;
+                        }
+                    }
+                    
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        handleImageLoad(processedFile, e.target.result, originalImages.length, 'image');
+                    };
+                    reader.readAsDataURL(processedFile);
+                } else if (type === 'base64') {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        handleBase64FileLoad(file, e.target.result, originalImages.length);
+                    };
+                    reader.readAsText(file);
+                }
             }
         }
 
-        // 處理裁切後的圖片
-        async function processCroppedImage(canvas, fileName) {
-            return new Promise((resolve, reject) => {
-                const mimeType = currentFormatValue;
-                const quality = currentQualityValue;
-                canvas.toBlob(blob => {
-                    if (blob) {
-                        const newFileName = changeExtension(fileName, mimeType);
-                        processedBlobs.push({ blob: blob, name: newFileName });
-                        resolve();
-                    } else {
-                        reject(new Error('無法從畫布建立 Blob。'));
-                    }
-                }, mimeType, quality);
-            });
+        function handleImageLoad(file, imageSrc, index, type) {
+            const img = new Image();
+            img.onload = function() {
+                originalImages.push({ 
+                    file, 
+                    img, 
+                    type, 
+                    base64: null, 
+                    originalWidth: img.width, 
+                    originalHeight: img.height,
+                    processedWidth: null,
+                    processedHeight: null
+                });
+                updateFileList();
+                const thumbnail = document.createElement('img');
+                thumbnail.src = imageSrc;
+                thumbnail.className = 'thumbnail';
+                thumbnail.dataset.index = index;
+                thumbnail.title = file.name;
+                document.getElementById('previewContainer').appendChild(thumbnail);
+                if (document.querySelector('.mode-button.active').dataset.mode === 'resize') {
+                    updateDimensionInputs();
+                }
+
+                // 裁切模式下，自動載入第一個檔案
+                if (document.querySelector('.mode-button.active').dataset.mode === 'crop' && originalImages.length === 1) {
+                    currentCroppingFile = originalImages[0];
+                    document.getElementById('cropImage').src = imageSrc;
+                    document.getElementById('cropImage').classList.remove('hidden');
+                    startCropping();
+                    document.getElementById('resultPreview').classList.add('hidden');
+                }
+            };
+            img.onerror = function() {
+                showError(`無法載入圖片：${file.name}，請確認檔案格式是否為 JPEG、PNG、HEIC 或 HEIF！`);
+            };
+            img.src = imageSrc;
         }
 
-        // 應用裁切
+        async function handleBase64FileLoad(file, text, index) {
+            let base64String = text.trim();
+            if (!base64String) {
+                showError(`Base64 檔案 ${file.name} 內容為空，請檢查檔案！`);
+                return;
+            }
+            
+            const prefixes = [
+                'data:image/jpeg;base64,',
+                'data:image/png;base64,',
+                'data:image/webp;base64,',
+                'data:image/gif;base64,'
+            ];
+            
+            if (base64String.startsWith('data:image/')) {
+                await tryImageLoad(file, base64String, index);
+                return;
+            }
+            
+            for (let prefix of prefixes) {
+                const testString = prefix + base64String;
+                try {
+                    const img = new Image();
+                    await new Promise((resolve, reject) => {
+                        img.onload = resolve;
+                        img.onerror = reject;
+                        img.src = testString;
+                    });
+                    await tryImageLoad(file, testString, index);
+                    return;
+                } catch (e) {
+                    continue;
+                }
+            }
+            showError(`檔案 ${file.name} 不是有效的 Base64 圖片字串，請檢查內容！`);
+        }
+        
+        async function tryImageLoad(file, base64, index) {
+            const img = new Image();
+            try {
+                await new Promise((resolve, reject) => {
+                    img.onload = resolve;
+                    img.onerror = reject;
+                    img.src = base64;
+                });
+                originalImages.push({ 
+                    file, 
+                    img, 
+                    type: 'base64', 
+                    base64: base64,
+                    originalWidth: img.width, 
+                    originalHeight: img.height,
+                    processedWidth: null,
+                    processedHeight: null
+                });
+                updateFileList();
+                const thumbnail = document.createElement('img');
+                thumbnail.src = base64;
+                thumbnail.className = 'thumbnail';
+                thumbnail.dataset.index = index;
+                thumbnail.title = file.name;
+                document.getElementById('previewContainer').appendChild(thumbnail);
+                document.getElementById('base64Text').value = '';
+            } catch (e) {
+                showError(`無法載入 Base64 圖片：${file.name}，請確認內容是否為有效的圖片 Base64 字串！`);
+            }
+        }
+
+        // 檔案清單更新
+        function updateFileList() {
+            const fileListDiv = document.getElementById('fileList');
+            fileListDiv.innerHTML = '';
+            originalImages.forEach((item, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                let infoText = `${index + 1}. ${item.file.name} (${(item.file.size / 1024).toFixed(2)} KB)`;
+                
+                if (item.originalWidth && item.originalHeight) {
+                    infoText += ` | 原尺寸: ${item.originalWidth}x${item.originalHeight}`;
+                }
+                
+                if (item.processedWidth && item.processedHeight) {
+                    infoText += ` | 調整後: ${item.processedWidth}x${item.processedHeight}`;
+                }
+                
+                fileItem.textContent = infoText;
+                fileListDiv.appendChild(fileItem);
+            });
+            document.getElementById('fileCount').textContent = originalImages.length;
+            updateProcessButtons();
+            if (document.querySelector('.mode-button.active').dataset.mode === 'crop' && originalImages.length > 1) {
+                showError('裁切功能目前僅支援單張圖片，已自動選擇第一張圖片進行裁切！');
+            }
+        }
+
+        // 尺寸輸入欄位更新
+        function updateDimensionInputs() {
+            const widthInput = document.getElementById('widthInput');
+            const heightInput = document.getElementById('heightInput');
+
+            if (currentDimensionMode === 'both') {
+                widthInput.classList.remove('hidden');
+                heightInput.classList.remove('hidden');
+            } else if (currentDimensionMode === 'width') {
+                widthInput.classList.remove('hidden');
+                heightInput.classList.add('hidden');
+            } else {
+                widthInput.classList.add('hidden');
+                heightInput.classList.remove('hidden');
+            }
+
+            const customWidth = document.querySelector('#widthContainer .size-button[data-value="custom"]').classList.contains('active');
+            const customHeight = document.querySelector('#heightContainer .size-button[data-value="custom"]').classList.contains('active');
+
+            if (!customWidth) {
+                widthInput.classList.add('hidden');
+            }
+            if (!customHeight) {
+                heightInput.classList.add('hidden');
+            }
+        }
+
+        // 品質輸入欄位顯示/隱藏
+        function toggleQualityContainer() {
+            const qualityContainer = document.getElementById('qualityContainer');
+            const format = document.querySelector('.format-button.active').dataset.value;
+            qualityContainer.style.display = (format === 'image/jpeg' || format === 'image/webp') ? 'flex' : 'none';
+        }
+
+        // 圖片尺寸調整與格式轉換
+        async function processResize() {
+            if (isProcessing || originalImages.length === 0) {
+                showError('請先選擇圖片檔案！');
+                return;
+            }
+            isProcessing = true;
+            disableUI();
+            
+            const mode = document.querySelector('.mode-button.active').dataset.mode;
+            if (mode !== 'resize') {
+                showError('請切換至「尺寸調整/格式轉換」模式！');
+                enableUI();
+                return;
+            }
+
+            processedBlobs = [];
+            totalToProcess = originalImages.length;
+            processedCount = 0;
+            startTime = Date.now();
+            document.getElementById('progressContainer').style.display = 'block';
+            updateProgress(0, totalToProcess, '開始處理...');
+
+            try {
+                const targetWidth = currentWidthValue === 'custom' ? parseInt(document.getElementById('widthInput').value) : parseInt(currentWidthValue);
+                const targetHeight = currentHeightValue === 'custom' ? parseInt(document.getElementById('heightInput').value) : parseInt(currentHeightValue);
+                const keepRatio = document.getElementById('aspectRatio').checked;
+                const targetQuality = currentQualityValue === 'custom' ? parseFloat(document.getElementById('qualityInput').value) / 100 : parseFloat(currentQualityValue);
+                const targetFormat = currentFormatValue;
+
+                if (isNaN(targetWidth) || isNaN(targetHeight) || isNaN(targetQuality) || targetWidth < 1 || targetHeight < 1 || targetQuality < 0 || targetQuality > 1) {
+                    showError('尺寸或品質輸入無效，請檢查！');
+                    enableUI();
+                    return;
+                }
+
+                if (originalImages.length === 1) {
+                    // 處理單張圖片
+                    const item = originalImages[0];
+                    const img = item.img;
+                    updateProgress(processedCount, totalToProcess, `處理中... ${item.file.name}`);
+                    
+                    const canvas = document.createElement('canvas');
+                    let newWidth, newHeight;
+                    if (keepRatio) {
+                        const ratio = img.width / img.height;
+                        if (currentDimensionMode === 'width') {
+                            newWidth = targetWidth;
+                            newHeight = targetWidth / ratio;
+                        } else if (currentDimensionMode === 'height') {
+                            newHeight = targetHeight;
+                            newWidth = targetHeight * ratio;
+                        } else {
+                            if (img.width > img.height) {
+                                newWidth = targetWidth;
+                                newHeight = targetWidth / ratio;
+                            } else {
+                                newHeight = targetHeight;
+                                newWidth = targetHeight * ratio;
+                            }
+                        }
+                    } else {
+                        newWidth = currentDimensionMode === 'height' ? img.width : targetWidth;
+                        newHeight = currentDimensionMode === 'width' ? img.height : targetHeight;
+                    }
+
+                    canvas.width = newWidth;
+                    canvas.height = newHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, newWidth, newHeight);
+
+                    const finalQuality = targetFormat === 'image/jpeg' ? targetQuality : 1;
+                    const blob = await new Promise(resolve => canvas.toBlob(resolve, targetFormat, finalQuality));
+                    
+                    const filenameWithoutExt = item.file.name.split('.').slice(0, -1).join('.');
+                    const extension = targetFormat.split('/')[1].replace('jpeg', 'jpg');
+                    const newFileName = `${filenameWithoutExt}_${Math.round(newWidth)}x${Math.round(newHeight)}.${extension}`;
+
+                    downloadBlob = blob;
+                    downloadFileName = newFileName;
+                    document.getElementById('downloadButton').textContent = '下載調整後圖片';
+                    document.getElementById('downloadButton').style.display = 'block';
+
+                    originalImages[0].processedWidth = Math.round(newWidth);
+                    originalImages[0].processedHeight = Math.round(newHeight);
+                    updateFileList();
+                    showSuccess('圖片尺寸調整與格式轉換完成！');
+                } else {
+                    // 處理多張圖片
+                    const zip = new JSZip();
+                    for (let i = 0; i < originalImages.length; i++) {
+                        const item = originalImages[i];
+                        const img = item.img;
+                        updateProgress(i, originalImages.length, `處理中... ${item.file.name}`);
+                        await new Promise(resolve => setTimeout(resolve, 10)); // 避免UI卡頓
+
+                        const canvas = document.createElement('canvas');
+                        let newWidth, newHeight;
+                        if (keepRatio) {
+                            const ratio = img.width / img.height;
+                            if (currentDimensionMode === 'width') {
+                                newWidth = targetWidth;
+                                newHeight = targetWidth / ratio;
+                            } else if (currentDimensionMode === 'height') {
+                                newHeight = targetHeight;
+                                newWidth = targetHeight * ratio;
+                            } else {
+                                if (img.width > img.height) {
+                                    newWidth = targetWidth;
+                                    newHeight = targetWidth / ratio;
+                                } else {
+                                    newHeight = targetHeight;
+                                    newWidth = targetHeight * ratio;
+                                }
+                            }
+                        } else {
+                            newWidth = currentDimensionMode === 'height' ? img.width : targetWidth;
+                            newHeight = currentDimensionMode === 'width' ? img.height : targetHeight;
+                        }
+                        
+                        canvas.width = newWidth;
+                        canvas.height = newHeight;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, newWidth, newHeight);
+
+                        const finalQuality = targetFormat === 'image/jpeg' ? targetQuality : 1;
+                        const blob = await new Promise(resolve => canvas.toBlob(resolve, targetFormat, finalQuality));
+                        
+                        const filenameWithoutExt = item.file.name.split('.').slice(0, -1).join('.');
+                        const extension = targetFormat.split('/')[1].replace('jpeg', 'jpg');
+                        const newFileName = `${filenameWithoutExt}_${Math.round(newWidth)}x${Math.round(newHeight)}.${extension}`;
+                        
+                        zip.file(newFileName, blob);
+                        
+                        // 更新處理後尺寸
+                        originalImages[i].processedWidth = Math.round(newWidth);
+                        originalImages[i].processedHeight = Math.round(newHeight);
+                        updateFileList(); // 每次處理完一個檔案就更新清單
+                    }
+
+                    updateProgress(originalImages.length, originalImages.length, '生成ZIP檔案中...');
+                    const zipBlob = await zip.generateAsync({ type: 'blob' });
+                    downloadBlob = zipBlob;
+                    downloadFileName = 'resized_images.zip';
+                    document.getElementById('downloadButton').textContent = '下載調整後圖片 ZIP 壓縮檔';
+                    document.getElementById('downloadButton').style.display = 'block';
+                    showSuccess('圖片尺寸調整與格式轉換完成！');
+                }
+            } catch (err) {
+                showError(`處理圖片時發生錯誤：${err.message}`);
+            } finally {
+                document.getElementById('progressContainer').style.display = 'none';
+                enableUI();
+            }
+        }
+
+
+        // 圖片轉 Base64
+        async function processImageToBase64() {
+            if (isProcessing || originalImages.length === 0) {
+                showError('請先選擇圖片檔案！');
+                return;
+            }
+            isProcessing = true;
+            disableUI();
+
+            const mode = document.querySelector('.mode-button.active').dataset.mode;
+            if (mode !== 'base64') {
+                showError('請切換至「Base64 互轉」模式！');
+                enableUI();
+                return;
+            }
+
+            base64Data = [];
+            totalToProcess = originalImages.length;
+            processedCount = 0;
+            startTime = Date.now();
+            document.getElementById('progressContainer').style.display = 'block';
+            updateProgress(0, totalToProcess, '開始處理...');
+
+            try {
+                if (originalImages.length === 1) {
+                    const item = originalImages[0];
+                    updateProgress(0, 1, `處理中... ${item.file.name}`);
+                    const reader = new FileReader();
+                    const base64String = await new Promise((resolve, reject) => {
+                        reader.onload = () => resolve(reader.result);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(item.file);
+                    });
+                    
+                    const blob = new Blob([base64String], { type: 'text/plain' });
+                    const filenameWithoutExt = item.file.name.split('.').slice(0, -1).join('.');
+                    downloadBlob = blob;
+                    downloadFileName = `${filenameWithoutExt}.txt`;
+                    document.getElementById('downloadButton').textContent = '下載 Base64 文字檔';
+                    document.getElementById('downloadButton').style.display = 'block';
+                    showSuccess('圖片轉 Base64 完成！');
+
+                } else {
+                    const zip = new JSZip();
+                    for (const item of originalImages) {
+                        updateProgress(processedCount, totalToProcess, `處理中... ${item.file.name}`);
+                        await new Promise(resolve => setTimeout(resolve, 10));
+
+                        const reader = new FileReader();
+                        await new Promise((resolve, reject) => {
+                            reader.onload = () => resolve();
+                            reader.onerror = reject;
+                            reader.readAsDataURL(item.file);
+                        });
+
+                        const base64String = reader.result;
+                        const filename = item.file.name.split('.').slice(0, -1).join('.');
+                        zip.file(`${filename}.txt`, base64String);
+
+                        processedCount++;
+                        updateProgress(processedCount, totalToProcess, `處理完成：${item.file.name}`);
+                        await new Promise(resolve => setTimeout(resolve, 10));
+                    }
+
+                    updateProgress(processedCount, totalToProcess, '生成ZIP檔案中...');
+                    const zipBlob = await zip.generateAsync({ type: 'blob' });
+                    const downloadButton = document.getElementById('downloadButton');
+                    downloadButton.style.display = 'block';
+                    downloadBlob = zipBlob;
+                    downloadFileName = 'images_base64.zip';
+                    downloadButton.textContent = '下載 Base64 ZIP 壓縮檔';
+                    showSuccess('圖片轉 Base64 完成！');
+                }
+
+            } catch (err) {
+                showError(`處理圖片時發生錯誤：${err.message}`);
+            } finally {
+                document.getElementById('progressContainer').style.display = 'none';
+                enableUI();
+            }
+        }
+        
+        // Base64 轉圖片
+        async function processBase64ToImage() {
+            if (isProcessing || originalImages.length === 0) {
+                showError('請先選擇 Base64 檔案！');
+                return;
+            }
+            isProcessing = true;
+            disableUI();
+
+            const mode = document.querySelector('.mode-button.active').dataset.mode;
+            if (mode !== 'base64') {
+                showError('請切換至「Base64 互轉」模式！');
+                enableUI();
+                return;
+            }
+
+            processedBlobs = [];
+            totalToProcess = originalImages.length;
+            processedCount = 0;
+            startTime = Date.now();
+            document.getElementById('progressContainer').style.display = 'block';
+            updateProgress(0, totalToProcess, '開始處理...');
+
+            try {
+                 if (originalImages.length === 1) {
+                    const item = originalImages[0];
+                    updateProgress(0, 1, `處理中... ${item.file.name}`);
+                    const filenameWithoutExt = item.file.name.split('.').slice(0, -1).join('.');
+                    const base64String = item.base64;
+                    const blob = await fetch(base64String).then(res => res.blob());
+                    const mimeType = blob.type;
+                    const extension = mimeType.split('/')[1].replace('jpeg', 'jpg');
+                    const newFileName = `${filenameWithoutExt}.${extension}`;
+                    
+                    downloadBlob = blob;
+                    downloadFileName = newFileName;
+                    document.getElementById('downloadButton').textContent = '下載轉換後圖片';
+                    document.getElementById('downloadButton').style.display = 'block';
+                    showSuccess('Base64轉圖片完成！');
+                 } else {
+                    const zip = new JSZip();
+                    for (const item of originalImages) {
+                        updateProgress(processedCount, totalToProcess, `處理中... ${item.file.name}`);
+                        await new Promise(resolve => setTimeout(resolve, 10));
+
+                        const filename = item.file.name.split('.').slice(0, -1).join('.');
+                        const base64String = item.base64;
+                        const blob = await fetch(base64String).then(res => res.blob());
+                        const mimeType = blob.type;
+                        const extension = mimeType.split('/')[1].replace('jpeg', 'jpg');
+                        const newFileName = `${filename}.${extension}`;
+
+                        zip.file(newFileName, blob);
+                        processedCount++;
+                        updateProgress(processedCount, totalToProcess, `處理完成：${item.file.name}`);
+                        await new Promise(resolve => setTimeout(resolve, 10));
+                    }
+
+                    updateProgress(processedCount, totalToProcess, '生成ZIP檔案中...');
+                    const zipBlob = await zip.generateAsync({ type: 'blob' });
+                    const downloadButton = document.getElementById('downloadButton');
+                    downloadButton.style.display = 'block';
+                    downloadBlob = zipBlob;
+                    downloadFileName = 'converted_images.zip';
+                    downloadButton.textContent = '下載轉換後的圖片 ZIP 壓縮檔';
+                    showSuccess('Base64轉圖片完成！');
+                 }
+            } catch (err) {
+                showError(`處理 Base64 檔案時發生錯誤：${err.message}`);
+            } finally {
+                document.getElementById('progressContainer').style.display = 'none';
+                enableUI();
+            }
+        }
+
+        // 裁切功能相關
+        function startCropping() {
+            if (cropper) {
+                cropper.destroy();
+            }
+            if (!currentCroppingFile) {
+                showError('請先選擇一張圖片！');
+                return;
+            }
+            
+            const cropImage = document.getElementById('cropImage');
+            cropper = new Cropper(cropImage, {
+                viewMode: 1,
+                aspectRatio: currentCropRatio,
+                responsive: true,
+                dragMode: 'move',
+                autoCropArea: 0.8
+            });
+            document.getElementById('applyCropBtn').disabled = false;
+            document.getElementById('resetCropBtn').disabled = false;
+            showSuccess('已進入裁切模式，請拖動裁切框進行調整。');
+        }
+
         async function applyCropping() {
             if (!cropper) {
                 showError('請先選擇圖片！');
                 return;
             }
-            if (isProcessing) {
-                showError('正在處理中，請稍候。');
-                return;
-            }
-            
+            isProcessing = true;
             disableUI();
+
+            const targetWidth = parseInt(document.getElementById('cropWidthInput').value);
+            const targetHeight = parseInt(document.getElementById('cropHeightInput').value);
+            const targetQuality = currentQualityValue;
+            const targetFormat = currentFormatValue;
             
             try {
-                const outputWidth = parseInt(document.getElementById('cropWidthInput').value);
-                const outputHeight = parseInt(document.getElementById('cropHeightInput').value);
-                
-                if (isNaN(outputWidth) || isNaN(outputHeight) || outputWidth <= 0 || outputHeight <= 0) {
-                    showError('請輸入有效的寬度和高度。');
-                    enableUI();
-                    return;
-                }
-                
-                const canvas = cropper.getCroppedCanvas({
-                    width: outputWidth,
-                    height: outputHeight,
-                    imageSmoothingEnabled: true,
-                    imageSmoothingQuality: 'high'
+                const croppedCanvas = cropper.getCroppedCanvas({
+                    width: targetWidth,
+                    height: targetHeight
                 });
+
+                const croppedBlob = await new Promise(resolve => {
+                    croppedCanvas.toBlob(blob => {
+                        resolve(blob);
+                    }, targetFormat, targetQuality);
+                });
+
+                const url = URL.createObjectURL(croppedBlob);
+                const resultPreview = document.getElementById('resultPreview');
+                resultPreview.src = url;
+                resultPreview.classList.remove('hidden');
+
+                const filenameWithoutExt = currentCroppingFile.file.name.split('.').slice(0, -1).join('.');
+                const extension = targetFormat.split('/')[1].replace('jpeg', 'jpg');
+                downloadBlob = croppedBlob;
+                downloadFileName = `${filenameWithoutExt}_cropped.${extension}`;
                 
-                processedBlobs = [];
-                await processCroppedImage(canvas, currentCroppingFile.name);
-                
-                showSuccess(`圖片裁切成功！`);
+                document.getElementById('downloadButton').textContent = '下載裁切後圖片';
                 document.getElementById('downloadButton').style.display = 'block';
-                downloadButton.textContent = `下載裁切結果 (${processedBlobs[0].name})`;
-                downloadBlob = processedBlobs[0].blob;
-                downloadFileName = processedBlobs[0].name;
-
-                // 顯示預覽
-                document.getElementById('resultPreview').src = URL.createObjectURL(downloadBlob);
-                document.getElementById('resultPreview').classList.remove('hidden');
-
-            } catch (error) {
-                console.error('裁切錯誤:', error);
-                showError('裁切圖片時發生錯誤。請再試一次。');
+                showSuccess('圖片裁切完成！');
+            } catch (e) {
+                showError('裁切圖片時發生錯誤：' + e.message);
             } finally {
+                isProcessing = false;
                 enableUI();
             }
         }
-    
-        // 重置裁切
+
         function resetCropping() {
             if (cropper) {
                 cropper.reset();
+                document.getElementById('resultPreview').classList.add('hidden');
+                document.getElementById('downloadButton').style.display = 'none';
+                showSuccess('裁切已重置。');
+            } else {
+                showError('尚未開始裁切！');
             }
-            document.getElementById('resultPreview').classList.add('hidden');
-            document.getElementById('downloadButton').style.display = 'none';
         }
 
-        // ... (其他函式保持不變)
-        
-        function updateDimensionInputs() {
-            // ... (函式內容保持不變)
-        }
-        
-        function setQuality(value) {
-            // ... (函式內容保持不變)
-        }
-        
-        function toggleQualityContainer() {
-            // ... (函式內容保持不變)
-        }
-        
-        function setFormat(value) {
-            // ... (函式內容保持不變)
-        }
-
-        function handleFileSelection(files, fileType) {
-            // ... (函式內容保持不變)
-        }
-        
-        function processFile(file, index) {
-            // ... (函式內容保持不變)
-        }
-
-        async function processResize() {
-            // ... (函式內容保持不變)
-        }
-
-        async function processImageToBase64() {
-            // ... (函式內容保持不變)
-        }
-        
-        async function processBase64ToImage() {
-            // ... (函式內容保持不變)
-        }
-
-        function createPreview(file) {
-            // ... (函式內容保持不變)
-        }
-
-        function updateFileList() {
-            // ... (函式內容保持不變)
-        }
-
-        function clearFiles() {
-            // ... (函式內容保持不變)
-        }
-
-        function changeExtension(fileName, mimeType) {
-            // ... (函式內容保持不變)
-        }
-
-        function updateProgress(processed, total, currentFileName = '', progressMessage = '') {
-            // ... (函式內容保持不變)
-        }
-        
-        function showMessage(elementId, message, displayTime = 5000) {
-            // ... (函式內容保持不變)
-        }
-
-        function showError(message) {
-            // ... (函式內容保持不變)
-        }
-        
-        function showSuccess(message) {
-            // ... (函式內容保持不變)
-        }
-
-        function updateProgressIndicator() {
-            // ... (函式內容保持不變)
+        // UI 相關函數
+        function updateProgress(processed, total, text) {
+            const percentage = Math.round((processed / total) * 100);
+            const progressFill = document.getElementById('progressFill');
+            const progressPercentage = document.getElementById('progressPercentage');
+            const progressText = document.getElementById('progressText');
+            
+            progressFill.style.width = `${percentage}%`;
+            progressPercentage.textContent = `${percentage}%`;
+            progressText.textContent = text;
+            
+            if (startTime) {
+                const elapsedTime = (Date.now() - startTime) / 1000;
+                const itemsPerSecond = processed / elapsedTime;
+                if (isFinite(itemsPerSecond) && itemsPerSecond > 0) {
+                    const remainingItems = total - processed;
+                    const timeRemaining = remainingItems / itemsPerSecond;
+                    const minutes = Math.floor(timeRemaining / 60);
+                    const seconds = Math.floor(timeRemaining % 60);
+                    document.getElementById('timeRemaining').textContent = `預計剩餘時間: ${minutes}分 ${seconds}秒`;
+                }
+            }
         }
 
         function disableUI() {
-            // ... (函式內容保持不變)
+            isProcessing = true;
+            document.querySelectorAll('button').forEach(btn => btn.disabled = true);
+            document.querySelectorAll('input').forEach(input => input.disabled = true);
+            document.querySelectorAll('textarea').forEach(textarea => textarea.disabled = true);
         }
 
         function enableUI() {
-            // ... (函式內容保持不變)
+            isProcessing = false;
+            document.querySelectorAll('button').forEach(btn => btn.disabled = false);
+            document.querySelectorAll('input').forEach(input => input.disabled = false);
+            document.querySelectorAll('textarea').forEach(textarea => textarea.disabled = false);
+            updateProcessButtons(); // 重新啟用按鈕
+            if (document.querySelector('.mode-button.active').dataset.mode === 'crop' && originalImages.length > 0) {
+                document.getElementById('applyCropBtn').disabled = false;
+            }
         }
 
         // 初始化
