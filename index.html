@@ -1646,7 +1646,8 @@
                 const filenameWithoutExt = currentCroppingFile.file.name.split('.').slice(0, -1).join('.');
                 const extension = targetFormat.split('/')[1].replace('jpeg', 'jpg');
                 downloadBlob = croppedBlob;
-                downloadFileName = `${filenameWithoutExt}_cropped.${extension}`;
+                downloadFileName = `${filenameWithoutExt}_cropped_${Math.round(targetWidth)}x${Math.round(targetHeight)}.${extension}`;
+
                 
                 document.getElementById('downloadButton').textContent = '下載裁切後圖片';
                 document.getElementById('downloadButton').style.display = 'block';
