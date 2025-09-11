@@ -503,10 +503,12 @@
             <div id="widthContainer">
                 <label>寬度 (px)</label>
                 <div class="size-buttons">
-                    <button class="size-button" data-value="256" onclick="setSize('width', '256')">256</button>
-                    <button class="size-button" data-value="512" onclick="setSize('width', '512')">512</button>
-                    <button class="size-button active" data-value="1024" onclick="setSize('width', '1024')">1024</button>
+                    <button class="size-button" data-value="1920" onclick="setSize('width', '1920')">1920</button>
                     <button class="size-button" data-value="1280" onclick="setSize('width', '1280')">1280</button>
+                    <button class="size-button active" data-value="1024" onclick="setSize('width', '1024')">1024</button>
+                    <button class="size-button" data-value="720" onclick="setSize('width', '720')">720</button>
+                    <button class="size-button" data-value="512" onclick="setSize('width', '512')">512</button>
+                    <button class="size-button" data-value="256" onclick="setSize('width', '256')">256</button>
                     <button class="size-button" data-value="custom" onclick="setSize('width', 'custom')">自訂</button>
                 </div>
                 <input type="number" id="widthInput" min="1" class="hidden" placeholder="輸入寬度">
@@ -514,10 +516,12 @@
             <div id="heightContainer">
                 <label>高度 (px)</label>
                 <div class="size-buttons">
-                    <button class="size-button" data-value="256" onclick="setSize('height', '256')">256</button>
-                    <button class="size-button" data-value="512" onclick="setSize('height', '512')">512</button>
-                    <button class="size-button active" data-value="1024" onclick="setSize('height', '1024')">1024</button>
+                    <button class="size-button" data-value="1920" onclick="setSize('height', '1920')">1920</button>
                     <button class="size-button" data-value="1280" onclick="setSize('height', '1280')">1280</button>
+                    <button class="size-button active" data-value="1024" onclick="setSize('height', '1024')">1024</button>
+                    <button class="size-button" data-value="720" onclick="setSize('height', '720')">720</button>
+                    <button class="size-button" data-value="512" onclick="setSize('height', '512')">512</button>
+                    <button class="size-button" data-value="256" onclick="setSize('height', '256')">256</button>
                     <button class="size-button" data-value="custom" onclick="setSize('height', 'custom')">自訂</button>
                 </div>
                 <input type="number" id="heightInput" min="1" class="hidden" placeholder="輸入高度">
@@ -529,10 +533,12 @@
             <div id="qualityContainer">
                 <label>品質</label>
                 <div class="quality-buttons">
-                    <button class="quality-button" data-value="0.5" onclick="setQuality('0.5')">50%</button>
-                    <button class="quality-button" data-value="0.7" onclick="setQuality('0.7')">70%</button>
-                    <button class="quality-button active" data-value="0.9" onclick="setQuality('0.9')">90%</button>
+                    <button class="quality-button active" data-value="1.0" onclick="setQuality('1.0')">100%</button>
                     <button class="quality-button" data-value="0.95" onclick="setQuality('0.95')">95%</button>
+                    <button class="quality-button" data-value="0.9" onclick="setQuality('0.9')">90%</button>
+                    <button class="quality-button" data-value="0.85" onclick="setQuality('0.85')">85%</button>
+                    <button class="quality-button" data-value="0.80" onclick="setQuality('0.80')">80%</button>
+                    <button class="quality-button" data-value="0.7" onclick="setQuality('0.7')">70%</button>
                     <button class="quality-button" data-value="custom" onclick="setQuality('custom')">自訂</button>
                 </div>
                 <input type="number" id="qualityInput" min="0" max="100" class="hidden" placeholder="0-100">
@@ -743,7 +749,7 @@
             
             // 獨立處理兩個區塊的品質按鈕 active 狀態
             document.querySelectorAll('#resizeOptions .quality-button').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.value === '0.9');
+                btn.classList.toggle('active', btn.dataset.value === '1.0');
             });
 
             document.querySelectorAll('#cropSection .quality-button').forEach(btn => {
