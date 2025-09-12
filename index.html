@@ -15,6 +15,10 @@
             --primary-color: #0033A0;
             --secondary-color: #005B99;
             --background-color: #E6F0FA;
+            --background2-color: #24A09A;
+            --background3-color: #007979;
+            --accent-color: #FBF802; /* 新增橙色作为强调色 */
+            --accent-dark: #E67E22; /* 橙色深色变体 */
             --light-background: #F5F8FA;
             --error-color: #ff3333;
             --success-color: #33cc33;
@@ -89,15 +93,27 @@
             background-color: var(--secondary-color);
             color: #FFFFFF;
         }
+
+       /* 专门为尺寸调整按钮和裁切按钮设置橙色样式 */
+        #resizeButton, #applyCropBtn, #resetCropBtn {
+            background: linear-gradient(135deg, var(--accent-color), var(--accent-dark));
+        }
+        
+        #resizeButton:hover, #applyCropBtn:hover, #resetCropBtn:hover {
+            background: linear-gradient(135deg, var(--accent-dark), #D35400);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }        
         .process-button:disabled {
             opacity: 0.6;
             cursor: not-allowed;
         }
+
         #downloadButton {
-            font-size: 16px;
+            font-size: 18px;
             padding: 10px 20px;
             cursor: pointer;
-            background-color: var(--secondary-color);
+            background-color: var(--background2-color);
             border: none;
             border-radius: 4px;
             color: #FFFFFF;
@@ -105,7 +121,8 @@
             transition: background-color 0.2s;
         }
         #downloadButton:hover {
-            background-color: var(--primary-color);
+            background-color: var(--background3-color);
+            color: #FBCB00;
         }
         #fileList {
             max-height: 120px;
@@ -421,8 +438,8 @@
                 <img id="cropImage" style="max-width: 100%;" class="hidden">
             </div>
             <div class="file-button-container">
-                <button class="process-button" id="applyCropBtn" onclick="applyCropping()" disabled>應用裁切</button>
-                <button class="process-button" id="resetCropBtn" onclick="resetCropping()" disabled>重置裁切</button>
+                <button class="process-button" id="applyCropBtn" onclick="applyCropping()" disabled>.   應 用 裁 切   .</button>
+                <button class="process-button" id="resetCropBtn" onclick="resetCropping()" disabled>.   重 置 裁 切   .</button>
             </div>
 
             <div class="control-group">
@@ -526,6 +543,10 @@
                 </div>
                 <input type="number" id="heightInput" min="1" class="hidden" placeholder="輸入高度">
             </div>
+            <!-- 新增: 顯示預計輸出尺寸 -->
+            <div class="output-dimension">
+                預計輸出尺寸(第一張圖片): <span id="outputDimensions">1024x768 px</span>
+            </div>
             <div>
                 <label>保持比例</label>
                 <input type="checkbox" id="aspectRatio" checked onchange="updateDimensions()">
@@ -565,7 +586,7 @@
         
         <div class="section">
             <div class="file-button-container" id="processButtonsContainer">
-                <button id="resizeButton" class="process-button mode-specific" data-mode="resize" onclick="processResize()">調整尺寸與格式</button>
+                <button id="resizeButton" class="process-button mode-specific" data-mode="resize" onclick="processResize()">開始執行 調整尺寸與轉換格式</button>
                 <button id="toBase64Button" class="process-button mode-specific" data-mode="base64" onclick="processImageToBase64()">圖片轉 Base64</button>
                 <button id="fromBase64Button" class="process-button mode-specific" data-mode="base64" onclick="processBase64ToImage()">Base64 轉圖片</button>
             </div>
@@ -1727,6 +1748,61 @@
                 showError('警告：此瀏覽器不支援資料夾選擇，請使用 Chrome、Edge 或 Safari！');
             }
         };
+        function calculateOutputDimensions() {
+            if (originalImages.length === 0) {
+                document.getElementById('outputDimensions').textContent = '無圖片';
+                return;
+            }
+            
+            const img = originalImages[0].img;
+            const targetWidth = currentWidthValue === 'custom' ? parseInt(document.getElementById('widthInput').value) : parseInt(currentWidthValue);
+            const targetHeight = currentHeightValue === 'custom' ? parseInt(document.getElementById('heightInput').value) : parseInt(currentHeightValue);
+            const keepRatio = document.getElementById('aspectRatio').checked;
+            
+            let newWidth, newHeight;
+            
+            if (keepRatio) {
+                const ratio = img.width / img.height;
+                if (currentDimensionMode === 'width') {
+                    newWidth = targetWidth;
+                    newHeight = Math.round(targetWidth / ratio);
+                } else if (currentDimensionMode === 'height') {
+                    newHeight = targetHeight;
+                    newWidth = Math.round(targetHeight * ratio);
+                } else {
+                    if (img.width > img.height) {
+                        newWidth = targetWidth;
+                        newHeight = Math.round(targetWidth / ratio);
+                    } else {
+                        newHeight = targetHeight;
+                        newWidth = Math.round(targetHeight * ratio);
+                    }
+                }
+            } else {
+                newWidth = currentDimensionMode === 'height' ? img.width : targetWidth;
+                newHeight = currentDimensionMode === 'width' ? img.height : targetHeight;
+            }
+            
+            document.getElementById('outputDimensions').textContent = `${newWidth}x${newHeight} px`;
+        }
+        
+        // 在相关事件中调用计算函数
+        function updateDimensions() {
+            calculateOutputDimensions();
+            // 原有的updateDimensions逻辑...
+        }
+        
+        // 初始化时调用一次
+        window.onload = function() {
+            switchMode('resize');
+            updateProcessButtons();
+            calculateOutputDimensions(); // 添加这一行
+            if (!checkDirectorySupport()) {
+                showError('警告：此瀏覽器不支援資料夾選擇，請使用 Chrome、Edge 或 Safari！');
+            }
+        };
+        
+    </script>
     </script>
 </body>
 </html>
